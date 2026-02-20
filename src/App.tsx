@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { ArxivPaper, SummaryResult } from './types';
 import { arxivService } from './services/arxiv';
 import { SummarizerService, type SummarizerConfig } from './services/summarizer';
+import { StreamingSummarizerService } from './services/streamingSummarizer';
+import { summaryCache } from './services/summaryCache';
 import { PaperCard } from './components/PaperCard';
 import { PaperListSkeleton } from './components/PaperCardSkeleton';
 import { SummaryModal } from './components/SummaryModal';
@@ -65,8 +68,9 @@ function App() {
   const paperRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [selectedPaperIndex, setSelectedPaperIndex] = useState(-1);
 
-  // Initialize summarizer
+  // Initialize summarizers
   const summarizer = new SummarizerService(config);
+  const streamingSummarizer = new StreamingSummarizerService(config);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -186,20 +190,95 @@ function App() {
     }, 2000);
   };
 
-  // Handle summarize
+  // Handle summarize with caching and streaming
   const handleSummarize = async (paper: ArxivPaper) => {
     setSelectedPaper(paper);
-    setIsSummarizing(true);
     setShowSummary(true);
+    
+    // Check cache first
+    const cached = summaryCache.get(paper.id, config.provider || 'local', config.model || '');
+    if (cached) {
+      console.log('[App] Using cached summary');
+      setSummary(cached);
+      setIsSummarizing(false);
+      return;
+    }
+    
+    setIsSummarizing(true);
     setSummary(null);
     
+    // Check if provider supports streaming
+    const supportsStreaming = config.provider === 'openai' || config.provider === 'moonshot';
+    
+    if (!supportsStreaming || !config.apiKey) {
+      // Use non-streaming for unsupported providers
+      try {
+        const result = await summarizer.summarize(paper.title, paper.summary);
+        setSummary(result);
+        // Cache the result
+        summaryCache.set(paper.id, result, config.provider || 'local', config.model || '');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '摘要生成失败');
+      } finally {
+        setIsSummarizing(false);
+      }
+      return;
+    }
+    
+    // Use streaming for supported providers
     try {
-      const result = await summarizer.summarize(paper.title, paper.summary);
-      setSummary(result);
+      const usedCache = await streamingSummarizer.streamSummarize(
+        paper.id,
+        paper.title,
+        paper.summary,
+        {
+          onChunk: (_chunk, partialSummary) => {
+            // Update UI every 10 tokens with partial result
+            if (partialSummary) {
+              // Use flushSync to force immediate re-render for streaming effect
+              flushSync(() => {
+                setSummary({ ...partialSummary });
+              });
+            }
+          },
+          onComplete: (_fullText, result) => {
+            setSummary(result);
+            setIsSummarizing(false);
+            // Already cached in streamSummarize
+          },
+          onError: (errorMsg) => {
+            console.error('[Streaming] Error:', errorMsg);
+            // Fallback to non-streaming
+            summarizer.summarize(paper.title, paper.summary)
+              .then(result => {
+                setSummary(result);
+                summaryCache.set(paper.id, result, config.provider || 'local', config.model || '');
+                setIsSummarizing(false);
+              })
+              .catch(err => {
+                setError(err instanceof Error ? err.message : '摘要生成失败');
+                setIsSummarizing(false);
+              });
+          }
+        }
+      );
+      
+      // If used cache, already handled in callback
+      if (usedCache) {
+        setIsSummarizing(false);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '摘要生成失败');
-    } finally {
-      setIsSummarizing(false);
+      console.error('[Streaming] Failed:', err);
+      // Fallback
+      try {
+        const result = await summarizer.summarize(paper.title, paper.summary);
+        setSummary(result);
+        summaryCache.set(paper.id, result, config.provider || 'local', config.model || '');
+      } catch (fallbackErr) {
+        setError(fallbackErr instanceof Error ? fallbackErr.message : '摘要生成失败');
+      } finally {
+        setIsSummarizing(false);
+      }
     }
   };
 
@@ -473,6 +552,7 @@ function App() {
         onClose={() => setShowSummary(false)}
         summary={summary}
         paperTitle={selectedPaper?.title || ''}
+        isLoading={isSummarizing}
       />
 
       <SettingsModal
