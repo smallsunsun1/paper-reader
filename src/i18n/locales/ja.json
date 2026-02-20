@@ -1,0 +1,109 @@
+{
+  "app": {
+    "title": "PaperReader",
+    "subtitle": "LLM 論文リーダー",
+    "description": "arXiv から最新の大規模言語モデル論文を自動取得。「AI要約」で論文の要点や方法論、意義を分析できます。"
+  },
+  "nav": {
+    "search": "論文を検索",
+    "refresh": "更新",
+    "library": "マイライブラリ",
+    "settings": "設定",
+    "shortcuts": "ショートカット",
+    "language": "言語"
+  },
+  "paper": {
+    "published": "公開",
+    "authors": "著者",
+    "categories": "カテゴリ",
+    "abstract": "要約",
+    "expand": "展開",
+    "collapse": "折りたたむ",
+    "favorite": "お気に入り",
+    "unfavorite": "お気に入り解除",
+    "aiSummary": "AI要約",
+    "summarizing": "分析中...",
+    "arxiv": "arXiv",
+    "pdf": "PDF",
+    "latestPapers": "最新論文",
+    "searchResults": "検索結果",
+    "papersCount": "{{count}} 件",
+    "loadMore": "さらに読み込む",
+    "noMore": "すべて読み込み完了",
+    "showing": "{{count}} 件を表示"
+  },
+  "summary": {
+    "title": "AI論文要約",
+    "originalTitle": "元の論文",
+    "keyPoints": "ポイント",
+    "methodology": "方法論",
+    "findings": "主な発見",
+    "implications": "意義",
+    "overallSummary": "全体要約",
+    "copy": "要約をコピー",
+    "copied": "コピー完了"
+  },
+  "settings": {
+    "title": "設定",
+    "provider": "AIプロバイダ",
+    "model": "モデル",
+    "apiKey": "APIキー",
+    "showKey": "表示",
+    "hideKey": "非表示",
+    "apiKeyHint": "APIキーはブラウザにローカルに保存され、サーバーには送信されません。",
+    "localMode": "ローカルモード",
+    "localModeDesc": "ローカルモードは基本的な要約機能のみ提供します。完全なAI分析には、他のプロバイダを選択してAPIキーを設定してください。",
+    "getApiKey": "APIキーを取得",
+    "cancel": "キャンセル",
+    "save": "設定を保存",
+    "saved": "保存完了"
+  },
+  "library": {
+    "title": "マイライブラリ",
+    "favorites": "お気に入り",
+    "history": "履歴",
+    "clearHistory": "クリア",
+    "noFavorites": "お気に入りの論文はありません",
+    "noFavoritesHint": "論文カードのハートアイコンをクリックしてお気に入りに追加",
+    "noHistory": "閲覧履歴はありません",
+    "noHistoryHint": "PDFリンクをクリックして論文を読む",
+    "addedAt": "追加日",
+    "readCount": "{{count}} 回閲覧",
+    "lastRead": "最終閲覧"
+  },
+  "shortcuts": {
+    "title": "キーボードショートカット",
+    "search": "検索ボックスにフォーカス",
+    "refresh": "論文リストを更新",
+    "settings": "設定を開く",
+    "library": "ライブラリを開く",
+    "nextPaper": "次の論文",
+    "prevPaper": "前の論文",
+    "help": "ショートカットヘルプを表示",
+    "close": "モーダルを閉じる"
+  },
+  "errors": {
+    "503": "arXivサービスは一時的に利用できません (503)。しばらくしてから再試行してください。",
+    "cors": "CORSエラー：arXiv APIにアクセスできません。正しい開発サーバー (npm run dev) を使用しているか確認してください。",
+    "network": "ネットワークエラー：arXivに接続できません。接続を確認してください。",
+    "loadFailed": "読み込み失敗",
+    "loadFailedDesc": "arXivから論文データを取得できませんでした。ネットワーク問題またはサービスの利用不可が原因かもしれません。",
+    "retry": "再試行",
+    "retrying": "再試行中...",
+    "retried": "{{count}} 回再試行",
+    "close": "閉じる",
+    "apiRateLimit": "arXiv APIにはレート制限があります。再試行する前に数秒待ってください。"
+  },
+  "footer": {
+    "dataSource": "データソース: arXiv.org API",
+    "rateLimit": "arXiv APIのレート制限のため、頻繁な更新は避けてください",
+    "terms": "利用規約"
+  },
+  "providers": {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "google": "Google Gemini",
+    "moonshot": "Kimi (Moonshot)",
+    "local": "ローカルモード (AIなし)"
+  }
+}

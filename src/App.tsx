@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ArxivPaper, SummaryResult } from './types';
 import { arxivService } from './services/arxiv';
 import { SummarizerService, type SummarizerConfig } from './services/summarizer';
@@ -20,7 +21,8 @@ import {
   WifiOff,
   Library,
   Keyboard,
-  X
+  X,
+  Globe
 } from 'lucide-react';
 
 const DEFAULT_CONFIG: SummarizerConfig = {
@@ -28,6 +30,7 @@ const DEFAULT_CONFIG: SummarizerConfig = {
 };
 
 function App() {
+  const { t, i18n } = useTranslation();
   // State
   const [papers, setPapers] = useState<ArxivPaper[]>([]);
   const [loading, setLoading] = useState(false);
@@ -236,7 +239,7 @@ function App() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="搜索论文 (/ 快捷键)..."
+                  placeholder={`${t('nav.search')} (/ )...`}
                   className="w-full pl-10 pr-4 py-2 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm transition-all outline-none"
                 />
               </div>
@@ -244,24 +247,48 @@ function App() {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
+              {/* Language Switcher */}
+              <div className="relative group">
+                <button
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  title={t('nav.language')}
+                >
+                  <Globe className="w-5 h-5" />
+                </button>
+                <div className="absolute right-0 top-full mt-1 py-1 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[100px]">
+                  {['zh', 'en', 'ja'].map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => i18n.changeLanguage(lang)}
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${
+                        i18n.language === lang ? 'text-blue-600 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      {lang === 'zh' && '中文'}
+                      {lang === 'en' && 'English'}
+                      {lang === 'ja' && '日本語'}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <button
                 onClick={() => setShowShortcutsHelp(true)}
                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="快捷键 (? )"
+                title={t('nav.shortcuts') + ' (? )'}
               >
                 <Keyboard className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setShowLibrary(true)}
                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="我的图书馆 (L)"
+                title={t('nav.library') + ' (L)'}
               >
                 <Library className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setShowSettings(true)}
                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="设置 (S)"
+                title={t('nav.settings') + ' (S)'}
               >
                 <Settings className="w-5 h-5" />
               </button>
@@ -288,10 +315,8 @@ function App() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">LLM 论文阅读助手</h2>
-              <p className="text-gray-600 mt-1">
-                自动获取 arXiv 上最新的大语言模型相关论文。点击「AI 摘要」使用 AI 分析论文要点、方法和意义。
-              </p>
+              <h2 className="text-lg font-semibold text-gray-900">{t('app.subtitle')}</h2>
+              <p className="text-gray-600 mt-1">{t('app.description')}</p>
               {config.provider === 'local' && (
                 <p className="text-amber-600 text-sm mt-2 flex items-center gap-1">
                   <AlertCircle className="w-4 h-4" />
@@ -322,13 +347,13 @@ function App() {
                   disabled={loading}
                   className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors"
                 >
-                  {loading ? '重试中...' : '重试'}
+                  {loading ? t('errors.retrying') : t('errors.retry')}
                 </button>
                 <button 
                   onClick={() => setError(null)}
                   className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
-                  关闭
+                  {t('errors.close')}
                 </button>
               </div>
             </div>
@@ -339,8 +364,8 @@ function App() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">
-              {searchQuery ? `搜索结果: "${searchQuery}"` : '最新论文'}
-              <span className="ml-2 text-sm font-normal text-gray-500">({papers.length} 篇)</span>
+              {searchQuery ? `${t('paper.searchResults')}: "${searchQuery}"` : t('paper.latestPapers')}
+              <span className="ml-2 text-sm font-normal text-gray-500">({t('paper.papersCount', { count: papers.length })})</span>
             </h3>
             <button
               onClick={() => loadPapers(true)}
@@ -348,7 +373,7 @@ function App() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              刷新
+              {t('nav.refresh')}
             </button>
           </div>
 
@@ -357,16 +382,16 @@ function App() {
           ) : papers.length === 0 && error ? (
             <div className="text-center py-16">
               <WifiOff className="w-16 h-16 text-gray-300 mx-auto" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">加载失败</h3>
+              <h3 className="mt-4 text-lg font-medium text-gray-900">{t('errors.loadFailed')}</h3>
               <p className="mt-1 text-gray-500 max-w-md mx-auto">
-                无法从 arXiv 获取论文数据。这可能是由于网络问题或 arXiv 服务暂时不可用。
+                {t('errors.loadFailedDesc')}
               </p>
               <button
                 onClick={handleRetry}
                 className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
-                重新加载
+                {t('errors.retry')}
               </button>
             </div>
           ) : papers.length === 0 ? (
@@ -404,10 +429,10 @@ function App() {
                 {loading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                    加载中...
+                    {t('paper.summarizing')}
                   </>
                 ) : (
-                  '加载更多'
+                  t('paper.loadMore')
                 )}
               </button>
             </div>
@@ -416,16 +441,16 @@ function App() {
           {/* No More Data */}
           {papers.length > 0 && !hasMore && (
             <div className="text-center pt-4 text-sm text-gray-500">
-              已加载全部论文
+              {t('paper.noMore')}
             </div>
           )}
 
           {/* Pagination Info */}
           {papers.length > 0 && (
             <div className="flex items-center justify-center gap-4 text-sm text-gray-500 pt-2">
-              <span>已显示 {papers.length} 篇论文</span>
+              <span>{t('paper.showing', { count: papers.length })}</span>
               {retryCount > 0 && (
-                <span className="text-amber-600">(已重试 {retryCount} 次)</span>
+                <span className="text-amber-600">({t('errors.retried', { count: retryCount })})</span>
               )}
             </div>
           )}
@@ -436,10 +461,8 @@ function App() {
       <footer className="border-t bg-white mt-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-            <p>数据来源: arXiv.org API</p>
-            <p className="text-xs">
-              由于 arXiv API 频率限制，请避免频繁刷新
-            </p>
+            <p>{t('footer.dataSource')}</p>
+            <p className="text-xs">{t('footer.rateLimit')}</p>
           </div>
         </div>
       </footer>
@@ -465,33 +488,53 @@ function App() {
       />
 
       {/* Keyboard Shortcuts Help */}
-      {showShortcutsHelp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowShortcutsHelp(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">键盘快捷键</h2>
-              <button onClick={() => setShowShortcutsHelp(false)} className="p-2 text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-2">
-              {[
-                { key: '/', desc: '聚焦搜索框' },
-                { key: 'R', desc: '刷新论文列表' },
-                { key: 'S', desc: '打开设置' },
-                { key: 'L', desc: '打开图书馆' },
-                { key: 'J / K', desc: '下一条 / 上一条论文' },
-                { key: '?', desc: '显示快捷键帮助' },
-              ].map(({ key, desc }) => (
-                <div key={key} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <span className="text-gray-600">{desc}</span>
-                  <kbd className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-mono">{key}</kbd>
-                </div>
-              ))}
-            </div>
-          </div>
+      {showShortcutsHelp && <ShortcutsHelpModal onClose={() => setShowShortcutsHelp(false)} />}
+    </div>
+  );
+}
+
+// 快捷键帮助弹窗组件（单独抽离以支持 ESC 关闭）
+function ShortcutsHelpModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
+  
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  const shortcuts = [
+    { key: '/', desc: t('shortcuts.search') },
+    { key: 'R', desc: t('shortcuts.refresh') },
+    { key: 'S', desc: t('shortcuts.settings') },
+    { key: 'L', desc: t('shortcuts.library') },
+    { key: 'J / K', desc: t('shortcuts.nextPaper') + ' / ' + t('shortcuts.prevPaper') },
+    { key: '?', desc: t('shortcuts.help') },
+    { key: 'ESC', desc: t('shortcuts.close') },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">{t('shortcuts.title')}</h2>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
         </div>
-      )}
+        <div className="space-y-2">
+          {shortcuts.map(({ key, desc }) => (
+            <div key={key} className="flex items-center justify-between py-2 border-b last:border-0">
+              <span className="text-gray-600">{desc}</span>
+              <kbd className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-mono">{key}</kbd>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

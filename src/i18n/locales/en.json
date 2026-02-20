@@ -1,0 +1,109 @@
+{
+  "app": {
+    "title": "PaperReader",
+    "subtitle": "LLM Paper Reader",
+    "description": "Automatically fetch the latest LLM papers from arXiv. Click \"AI Summary\" to analyze key points, methodology, and significance."
+  },
+  "nav": {
+    "search": "Search papers",
+    "refresh": "Refresh",
+    "library": "My Library",
+    "settings": "Settings",
+    "shortcuts": "Shortcuts",
+    "language": "Language"
+  },
+  "paper": {
+    "published": "Published",
+    "authors": "Authors",
+    "categories": "Categories",
+    "abstract": "Abstract",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "favorite": "Favorite",
+    "unfavorite": "Unfavorite",
+    "aiSummary": "AI Summary",
+    "summarizing": "Analyzing...",
+    "arxiv": "arXiv",
+    "pdf": "PDF",
+    "latestPapers": "Latest Papers",
+    "searchResults": "Search Results",
+    "papersCount": "{{count}} papers",
+    "loadMore": "Load More",
+    "noMore": "All papers loaded",
+    "showing": "Showing {{count}} papers"
+  },
+  "summary": {
+    "title": "AI Paper Summary",
+    "originalTitle": "Original Paper",
+    "keyPoints": "Key Points",
+    "methodology": "Methodology",
+    "findings": "Findings",
+    "implications": "Implications",
+    "overallSummary": "Overall Summary",
+    "copy": "Copy Summary",
+    "copied": "Copied"
+  },
+  "settings": {
+    "title": "Settings",
+    "provider": "AI Provider",
+    "model": "Model",
+    "apiKey": "API Key",
+    "showKey": "Show",
+    "hideKey": "Hide",
+    "apiKeyHint": "Your API Key is stored locally in the browser and never sent to our servers.",
+    "localMode": "Local Mode",
+    "localModeDesc": "Local mode provides basic extractive summarization only. For full AI analysis, please select another provider and configure an API Key.",
+    "getApiKey": "Get API Key",
+    "cancel": "Cancel",
+    "save": "Save Settings",
+    "saved": "Saved"
+  },
+  "library": {
+    "title": "My Library",
+    "favorites": "Favorites",
+    "history": "History",
+    "clearHistory": "Clear",
+    "noFavorites": "No favorite papers yet",
+    "noFavoritesHint": "Click the heart icon on paper cards to add favorites",
+    "noHistory": "No reading history",
+    "noHistoryHint": "Click PDF link to read papers",
+    "addedAt": "Added",
+    "readCount": "Read {{count}} times",
+    "lastRead": "Last read"
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "search": "Focus search box",
+    "refresh": "Refresh paper list",
+    "settings": "Open settings",
+    "library": "Open library",
+    "nextPaper": "Next paper",
+    "prevPaper": "Previous paper",
+    "help": "Show shortcuts help",
+    "close": "Close modal"
+  },
+  "errors": {
+    "503": "arXiv service temporarily unavailable (503). Please try again later. Consider reducing request frequency.",
+    "cors": "CORS error: Cannot access arXiv API. Please ensure you're using the correct dev server (npm run dev).",
+    "network": "Network error: Cannot connect to arXiv. Please check your connection.",
+    "loadFailed": "Loading Failed",
+    "loadFailedDesc": "Failed to fetch papers from arXiv. This may be due to network issues or arXiv service unavailability.",
+    "retry": "Retry",
+    "retrying": "Retrying...",
+    "retried": "Retried {{count}} times",
+    "close": "Close",
+    "apiRateLimit": "arXiv API has rate limits. Please wait a few seconds before retrying."
+  },
+  "footer": {
+    "dataSource": "Data source: arXiv.org API",
+    "rateLimit": "Please avoid frequent refreshes due to arXiv API rate limits",
+    "terms": "Terms of Use"
+  },
+  "providers": {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "google": "Google Gemini",
+    "moonshot": "Kimi (Moonshot)",
+    "local": "Local Mode (No AI)"
+  }
+}

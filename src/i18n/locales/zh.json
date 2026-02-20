@@ -1,0 +1,109 @@
+{
+  "app": {
+    "title": "PaperReader",
+    "subtitle": "LLM 论文阅读助手",
+    "description": "自动获取 arXiv 上最新的大语言模型相关论文。点击「AI 摘要」使用 AI 分析论文要点、方法和意义。"
+  },
+  "nav": {
+    "search": "搜索论文",
+    "refresh": "刷新",
+    "library": "我的图书馆",
+    "settings": "设置",
+    "shortcuts": "快捷键",
+    "language": "语言"
+  },
+  "paper": {
+    "published": "发布",
+    "authors": "作者",
+    "categories": "分类",
+    "abstract": "摘要",
+    "expand": "展开",
+    "collapse": "收起",
+    "favorite": "收藏",
+    "unfavorite": "取消收藏",
+    "aiSummary": "AI 摘要",
+    "summarizing": "分析中...",
+    "arxiv": "arXiv",
+    "pdf": "PDF",
+    "latestPapers": "最新论文",
+    "searchResults": "搜索结果",
+    "papersCount": "{{count}} 篇",
+    "loadMore": "加载更多",
+    "noMore": "已加载全部论文",
+    "showing": "已显示 {{count}} 篇论文"
+  },
+  "summary": {
+    "title": "AI 论文摘要",
+    "originalTitle": "原始论文",
+    "keyPoints": "核心要点",
+    "methodology": "研究方法",
+    "findings": "主要发现",
+    "implications": "研究意义",
+    "overallSummary": "总体摘要",
+    "copy": "复制摘要",
+    "copied": "已复制"
+  },
+  "settings": {
+    "title": "设置",
+    "provider": "AI 提供商",
+    "model": "模型",
+    "apiKey": "API Key",
+    "showKey": "显示",
+    "hideKey": "隐藏",
+    "apiKeyHint": "您的 API Key 仅存储在本地浏览器中，不会发送到我们的服务器。",
+    "localMode": "本地模式",
+    "localModeDesc": "本地模式仅提供基础的摘要提取功能，无法生成智能分析。如需完整 AI 摘要功能，请选择其他提供商并配置 API Key。",
+    "getApiKey": "获取 API Key",
+    "cancel": "取消",
+    "save": "保存设置",
+    "saved": "已保存"
+  },
+  "library": {
+    "title": "我的图书馆",
+    "favorites": "收藏",
+    "history": "历史",
+    "clearHistory": "清空",
+    "noFavorites": "暂无收藏论文",
+    "noFavoritesHint": "点击论文卡片上的心形图标收藏",
+    "noHistory": "暂无阅读历史",
+    "noHistoryHint": "点击 PDF 链接阅读论文",
+    "addedAt": "收藏于",
+    "readCount": "阅读 {{count}} 次",
+    "lastRead": "最近"
+  },
+  "shortcuts": {
+    "title": "键盘快捷键",
+    "search": "聚焦搜索框",
+    "refresh": "刷新论文列表",
+    "settings": "打开设置",
+    "library": "打开图书馆",
+    "nextPaper": "下一条论文",
+    "prevPaper": "上一条论文",
+    "help": "显示快捷键帮助",
+    "close": "关闭弹窗"
+  },
+  "errors": {
+    "503": "arXiv 服务暂时不可用 (503)，请稍后再试。建议减少搜索频率，等待几秒后重试。",
+    "cors": "CORS 跨域错误：无法访问 arXiv API。请确保使用正确的开发服务器 (npm run dev) 或检查网络连接。",
+    "network": "网络错误：无法连接到 arXiv。请检查网络连接。",
+    "loadFailed": "加载失败",
+    "loadFailedDesc": "无法从 arXiv 获取论文数据。这可能是由于网络问题或 arXiv 服务暂时不可用。",
+    "retry": "重试",
+    "retrying": "重试中...",
+    "retried": "已重试 {{count}} 次",
+    "close": "关闭",
+    "apiRateLimit": "arXiv API 有频率限制，建议等待几秒后重试"
+  },
+  "footer": {
+    "dataSource": "数据来源: arXiv.org API",
+    "rateLimit": "由于 arXiv API 频率限制，请避免频繁刷新",
+    "terms": "使用条款"
+  },
+  "providers": {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "google": "Google Gemini",
+    "moonshot": "Kimi (月之暗面)",
+    "local": "本地模式 (无AI)"
+  }
+}

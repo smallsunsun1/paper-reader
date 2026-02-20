@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Key, Settings2, AlertCircle, Check } from 'lucide-react';
 import type { SummarizerConfig } from '../services/summarizer';
 
@@ -39,6 +39,17 @@ function SettingsModalContent({
   const [config, setConfig] = useState<SummarizerConfig>(currentConfig);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // ESC 键关闭弹窗
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
 
   const selectedProvider = PROVIDERS.find(p => p.id === config.provider);
 

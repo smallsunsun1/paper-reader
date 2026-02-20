@@ -1,6 +1,6 @@
 import type { SummaryResult } from '../types';
 import { X, Lightbulb, FlaskConical, Target, TrendingUp, FileText, Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface SummaryModalProps {
   isOpen: boolean;
@@ -11,6 +11,18 @@ interface SummaryModalProps {
 
 export function SummaryModal({ isOpen, onClose, summary, paperTitle }: SummaryModalProps) {
   const [copied, setCopied] = useState(false);
+
+  // ESC 键关闭弹窗
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !summary) return null;
 

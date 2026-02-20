@@ -16,6 +16,18 @@ export function LibraryModal({ isOpen, onClose }: LibraryModalProps) {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ favorites: 0, history: 0 });
 
+  // ESC 键关闭弹窗
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
