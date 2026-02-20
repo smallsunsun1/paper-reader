@@ -1,15 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ArxivPaper } from '../types';
-import { Calendar, User, FileText, ExternalLink, Sparkles, ChevronDown, ChevronUp, Tag } from 'lucide-react';
+import { dbService } from '../services/db';
+import { 
+  Calendar, 
+  User, 
+  FileText, 
+  ExternalLink, 
+  Sparkles, 
+  ChevronDown, 
+  ChevronUp, 
+  Tag,
+  Heart
+} from 'lucide-react';
 
 interface PaperCardProps {
   paper: ArxivPaper;
   onSummarize: (paper: ArxivPaper) => void;
   isSummarizing: boolean;
+  onViewPDF?: (paper: ArxivPaper) => void;
 }
 
-export function PaperCard({ paper, onSummarize, isSummarizing }: PaperCardProps) {
+export function PaperCard({ paper, onSummarize, isSummarizing, onViewPDF }: PaperCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoadingFavorite, setIsLoadingFavorite] = useState(false);
+
+  // 检查是否已收藏
+  useEffect(() => {
+    const checkFavorite = async () => {
+      try {
+        const favorite = await dbService.isFavorite(paper.id);
+        setIsFavorite(favorite);
+      } catch (error) {
+        console.error('[PaperCard] Error checking favorite:', error);
+      }
+    };
+    checkFavorite();
+  }, [paper.id]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -25,6 +52,56 @@ export function PaperCard({ paper, onSummarize, isSummarizing }: PaperCardProps)
     return `${authors.slice(0, max).join(', ')} +${authors.length - max} more`;
   };
 
+  const handleToggleFavorite = useCallback(async () => {
+    if (isLoadingFavorite) return;
+    
+    setIsLoadingFavorite(true);
+    try {
+      if (isFavorite) {
+        await dbService.removeFavorite(paper.id);
+        setIsFavorite(false);
+      } else {
+        await dbService.addFavorite({
+          id: paper.id,
+          title: paper.title,
+          authors: paper.authors,
+          summary: paper.summary,
+          pdfUrl: paper.pdfUrl,
+          arxivUrl: paper.arxivUrl,
+          primaryCategory: paper.primaryCategory,
+          categories: paper.categories,
+          published: paper.published,
+        });
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error('[PaperCard] Error toggling favorite:', error);
+    } finally {
+      setIsLoadingFavorite(false);
+    }
+  }, [isFavorite, isLoadingFavorite, paper]);
+
+  const handleViewPDF = useCallback(async () => {
+    // 添加到阅读历史
+    try {
+      await dbService.addToHistory({
+        id: paper.id,
+        title: paper.title,
+        authors: paper.authors,
+        pdfUrl: paper.pdfUrl,
+        arxivUrl: paper.arxivUrl,
+        primaryCategory: paper.primaryCategory,
+      });
+    } catch (error) {
+      console.error('[PaperCard] Error adding to history:', error);
+    }
+
+    // 调用外部处理或默认打开
+    if (onViewPDF) {
+      onViewPDF(paper);
+    }
+  }, [paper, onViewPDF]);
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       {/* Header */}
@@ -33,9 +110,24 @@ export function PaperCard({ paper, onSummarize, isSummarizing }: PaperCardProps)
           <h3 className="text-lg font-semibold text-gray-900 leading-snug line-clamp-2 flex-1">
             {paper.title}
           </h3>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 shrink-0">
-            {paper.primaryCategory}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+              {paper.primaryCategory}
+            </span>
+            {/* 收藏按钮 */}
+            <button
+              onClick={handleToggleFavorite}
+              disabled={isLoadingFavorite}
+              className={`p-1.5 rounded-lg transition-colors ${
+                isFavorite 
+                  ? 'text-red-500 bg-red-50 hover:bg-red-100' 
+                  : 'text-gray-400 hover:text-red-500 hover:bg-gray-100'
+              }`}
+              title={isFavorite ? '取消收藏' : '收藏'}
+            >
+              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+            </button>
+          </div>
         </div>
 
         {/* Authors */}
@@ -123,6 +215,10 @@ export function PaperCard({ paper, onSummarize, isSummarizing }: PaperCardProps)
             href={paper.pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => {
+              // 先记录历史，再打开
+              handleViewPDF();
+            }}
             className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
             <FileText className="w-4 h-4 mr-2" />

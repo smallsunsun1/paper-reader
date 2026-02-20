@@ -63,6 +63,7 @@ npm run build
 - **OpenAI**: https://platform.openai.com/api-keys
 - **Anthropic**: https://console.anthropic.com/settings/keys
 - **Google Gemini**: https://aistudio.google.com/app/apikey
+- **Kimi**: https://platform.moonshot.cn/console/api-keys
 
 > 注意：API Key 仅存储在浏览器本地，不会发送到任何第三方服务器。
 

@@ -2,7 +2,7 @@ import type { SummaryResult } from '../types';
 
 export interface SummarizerConfig {
   apiKey?: string;
-  provider: 'openai' | 'anthropic' | 'google' | 'local';
+  provider: 'openai' | 'anthropic' | 'google' | 'moonshot' | 'local';
   model?: string;
   temperature?: number;
 }
@@ -13,7 +13,7 @@ export class SummarizerService {
   constructor(config: SummarizerConfig) {
     this.config = {
       model: this.getDefaultModel(config.provider),
-      temperature: 0.3,
+      temperature: 1.0,
       ...config
     };
   }
@@ -26,6 +26,8 @@ export class SummarizerService {
         return 'claude-3-sonnet-20240229';
       case 'google':
         return 'gemini-pro';
+      case 'moonshot':
+        return 'kimi-k2-turbo-preview';
       case 'local':
         return 'llama2';
       default:
@@ -155,6 +157,39 @@ Be accurate, concise, and avoid hype. Use technical terminology appropriately.`;
     return this.validateAndNormalizeResult(result);
   }
 
+  private async callMoonshot(title: string, abstract: string, fullText?: string): Promise<SummaryResult> {
+    const content = fullText 
+      ? `Title: ${title}\n\nAbstract: ${abstract}\n\nFull Text (first 8000 chars): ${fullText.slice(0, 8000)}`
+      : `Title: ${title}\n\nAbstract: ${abstract}`;
+
+    // Kimi API 兼容 OpenAI 格式
+    const response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: [
+          { role: 'system', content: this.getSystemPrompt() },
+          { role: 'user', content: content }
+        ],
+        temperature: this.config.temperature,
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Kimi API error: ${error}`);
+    }
+
+    const data = await response.json();
+    const result = JSON.parse(data.choices[0].message.content);
+    return this.validateAndNormalizeResult(result);
+  }
+
   /**
    * Local summarizer using a simple extractive approach
    * (Fallback when no API key is available)
@@ -185,14 +220,15 @@ Be accurate, concise, and avoid hype. Use technical terminology appropriately.`;
     };
   }
 
-  private validateAndNormalizeResult(result: any): SummaryResult {
+  private validateAndNormalizeResult(result: unknown): SummaryResult {
+    const r = result as Record<string, unknown>;
     return {
-      title: result.title || 'Summary',
-      keyPoints: Array.isArray(result.keyPoints) ? result.keyPoints : [result.keyPoints || ''],
-      methodology: result.methodology || result.methods || 'Not specified',
-      findings: result.findings || result.results || 'Not specified',
-      implications: result.implications || result.significance || 'Not specified',
-      overallSummary: result.overallSummary || result.summary || result.abstract || 'No summary available'
+      title: (r.title as string) || 'Summary',
+      keyPoints: Array.isArray(r.keyPoints) ? (r.keyPoints as string[]) : [(r.keyPoints as string) || ''],
+      methodology: (r.methodology as string) || (r.methods as string) || 'Not specified',
+      findings: (r.findings as string) || (r.results as string) || 'Not specified',
+      implications: (r.implications as string) || (r.significance as string) || 'Not specified',
+      overallSummary: (r.overallSummary as string) || (r.summary as string) || (r.abstract as string) || 'No summary available'
     };
   }
 
@@ -218,6 +254,8 @@ Be accurate, concise, and avoid hype. Use technical terminology appropriately.`;
           return await this.callAnthropic(title, abstract, fullText);
         case 'google':
           return await this.callGoogle(title, abstract, fullText);
+        case 'moonshot':
+          return await this.callMoonshot(title, abstract, fullText);
         case 'local':
         default:
           return await this.localSummarize(title, abstract);

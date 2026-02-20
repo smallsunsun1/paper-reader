@@ -1,7 +1,5 @@
 import type { ArxivPaper, SearchFilters } from '../types';
 
-const ARXIV_API_BASE = 'https://export.arxiv.org/api/query';
-
 // 主要关注的 arXiv 分类 - 与 AI/ML 相关的
 const TARGET_CATEGORIES = [
   'cs.CL',  // 计算与语言
@@ -18,10 +16,46 @@ const REQUEST_DELAY = 3000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 5000;
 
+// CORS 代理列表（用于生产环境备选）
+const CORS_PROXIES = [
+  '',  // 空字符串表示直接请求（开发环境使用 Vite 代理）
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?',
+];
+
 export class ArxivService {
   private lastRequestTime: number = 0;
   private cache: Map<string, { data: ArxivPaper[]; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
+  private currentProxyIndex = 0;
+
+  /**
+   * 获取基础 URL（根据是否使用代理）
+   */
+  private getBaseUrl(): string {
+    const proxy = CORS_PROXIES[this.currentProxyIndex];
+    const arxivBase = 'https://export.arxiv.org/api/query';
+    
+    if (proxy) {
+      return proxy + encodeURIComponent(arxivBase);
+    }
+    
+    // 开发环境：使用 Vite 代理
+    // 生产环境：如果直接请求失败，会自动切换到代理
+    return '/api/arxiv/api/query';
+  }
+
+  /**
+   * 切换到下一个代理
+   */
+  private switchToNextProxy(): boolean {
+    if (this.currentProxyIndex < CORS_PROXIES.length - 1) {
+      this.currentProxyIndex++;
+      console.log(`[arXiv] Switching to proxy: ${CORS_PROXIES[this.currentProxyIndex] || 'direct'}`);
+      return true;
+    }
+    return false;
+  }
 
   /**
    * 等待一段时间
@@ -48,10 +82,8 @@ export class ArxivService {
 
   /**
    * Build simplified search query for LLM papers
-   * 使用更简洁的查询减少服务器负担
    */
   private buildLLMQuery(): string {
-    // 只使用最核心的几个关键词，减少查询复杂度
     const coreKeywords = ['"large language model"', 'LLM', 'GPT', 'transformer'];
     return coreKeywords.join(' OR ');
   }
@@ -156,13 +188,6 @@ export class ArxivService {
   }
 
   /**
-   * 获取缓存键
-   */
-  private getCacheKey(url: string): string {
-    return url;
-  }
-
-  /**
    * 从缓存获取数据
    */
   private getFromCache(key: string): ArxivPaper[] | null {
@@ -186,40 +211,58 @@ export class ArxivService {
   }
 
   /**
-   * 执行带重试的请求
+   * 执行带重试的请求，自动处理 CORS 问题
    */
-  private async fetchWithRetry(url: string, retries: number = MAX_RETRIES): Promise<Response> {
+  private async fetchWithRetry(
+    params: URLSearchParams, 
+    retries: number = MAX_RETRIES
+  ): Promise<Response> {
     try {
       await this.throttleRequest();
       
-      console.log(`[arXiv] Fetching: ${url}`);
+      const baseUrl = this.getBaseUrl();
+      const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + params.toString();
+      
+      console.log(`[arXiv] Fetching via: ${baseUrl.includes('proxy') ? 'proxy' : 'direct'}`);
+      
       const response = await fetch(url, {
+        method: 'GET',
         headers: {
-          'Accept': 'application/atom+xml'
-        }
+          'Accept': 'application/atom+xml, application/xml, text/xml',
+        },
       });
 
       // 503 错误时重试
       if (response.status === 503 && retries > 0) {
         console.log(`[arXiv] 503 error, retrying in ${RETRY_DELAY}ms... (${retries} retries left)`);
         await this.delay(RETRY_DELAY);
-        return this.fetchWithRetry(url, retries - 1);
+        return this.fetchWithRetry(params, retries - 1);
       }
 
       return response;
     } catch (error) {
+      const isCORSError = error instanceof TypeError && 
+        (error.message.includes('CORS') || error.message.includes('Failed to fetch'));
+      
+      // CORS 错误时尝试切换代理
+      if (isCORSError && this.switchToNextProxy()) {
+        console.log('[arXiv] CORS error detected, trying alternative...');
+        return this.fetchWithRetry(params, retries);
+      }
+      
+      // 网络错误时重试
       if (retries > 0) {
         console.log(`[arXiv] Network error, retrying... (${retries} retries left)`);
         await this.delay(RETRY_DELAY);
-        return this.fetchWithRetry(url, retries - 1);
+        return this.fetchWithRetry(params, retries - 1);
       }
+      
       throw error;
     }
   }
 
   /**
    * Search for papers on arXiv
-   * 优化后的搜索，限制范围并添加重试
    */
   async searchPapers(
     query?: string,
@@ -230,14 +273,13 @@ export class ArxivService {
     const searchQuery = query || this.buildLLMQuery();
     const sortBy = filters?.sortBy || 'submittedDate';
     const sortOrder = filters?.sortOrder || 'descending';
-    const max = Math.min(filters?.maxResults || maxResults, 10); // 最多10篇
+    const max = Math.min(filters?.maxResults || maxResults, 10);
 
-    // 构建查询：限制在特定分类内搜索，减少服务器负担
+    // 构建查询
     let finalQuery: string;
     if (filters?.category) {
       finalQuery = `cat:${filters.category} AND (${searchQuery})`;
     } else {
-      // 使用分类限制 + 关键词搜索
       finalQuery = `(${this.buildCategoryQuery()}) AND (${searchQuery})`;
     }
 
@@ -249,15 +291,12 @@ export class ArxivService {
       sortOrder: sortOrder
     });
 
-    const url = `${ARXIV_API_BASE}?${params.toString()}`;
-    
-    // 检查缓存
-    const cacheKey = this.getCacheKey(url);
+    const cacheKey = params.toString();
     const cached = this.getFromCache(cacheKey);
     if (cached) return cached;
     
     try {
-      const response = await this.fetchWithRetry(url);
+      const response = await this.fetchWithRetry(params);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -266,8 +305,10 @@ export class ArxivService {
       const xmlText = await response.text();
       const papers = this.parseAtomXml(xmlText);
       
-      // 保存到缓存
       this.setCache(cacheKey, papers);
+      
+      // 成功后重置代理索引
+      this.currentProxyIndex = 0;
       
       return papers;
     } catch (error) {
@@ -277,15 +318,13 @@ export class ArxivService {
   }
 
   /**
-   * Get latest LLM papers - 最简化版本，优先使用分类浏览
+   * Get latest LLM papers
    */
   async getLatestPapers(start: number = 0, maxResults: number = 10): Promise<ArxivPaper[]> {
-    // 如果 start 为 0，尝试直接获取特定分类的最新论文
     if (start === 0) {
       return this.getRecentPapersFromCategories(maxResults);
     }
     
-    // 否则使用搜索
     return this.searchPapers(undefined, start, maxResults, {
       sortBy: 'submittedDate',
       sortOrder: 'descending'
@@ -293,14 +332,13 @@ export class ArxivService {
   }
 
   /**
-   * 从特定分类获取最近论文 - 这种方式对服务器负担更小
+   * 从特定分类获取最近论文
    */
   private async getRecentPapersFromCategories(maxResults: number = 10): Promise<ArxivPaper[]> {
     const cacheKey = 'recent_categories_' + maxResults;
     const cached = this.getFromCache(cacheKey);
     if (cached) return cached;
 
-    // 优先从 cs.CL (计算语言学) 获取，这是 LLM 论文最多的分类
     const primaryCategory = 'cs.CL';
     
     const params = new URLSearchParams({
@@ -311,10 +349,8 @@ export class ArxivService {
       sortOrder: 'descending'
     });
 
-    const url = `${ARXIV_API_BASE}?${params.toString()}`;
-    
     try {
-      const response = await this.fetchWithRetry(url);
+      const response = await this.fetchWithRetry(params);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -323,17 +359,24 @@ export class ArxivService {
       const xmlText = await response.text();
       const papers = this.parseAtomXml(xmlText);
       
-      // 过滤出与 LLM 相关的论文
       const llmPapers = papers.filter(p => this.isLLMPaper(p));
-      
-      // 如果过滤后太少，补充一些其他论文
       const result = llmPapers.length >= 5 ? llmPapers : papers.slice(0, maxResults);
       
       this.setCache(cacheKey, result);
+      
+      // 成功后重置代理索引
+      this.currentProxyIndex = 0;
+      
       return result;
     } catch (error) {
       console.error('[arXiv] Error fetching from categories:', error);
-      // 出错时返回空数组而不是抛出，避免 UI 崩溃
+      
+      // 如果是 CORS 错误，给用户提供更清晰的提示
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('CORS') || errorMsg.includes('Failed to fetch')) {
+        throw new Error('CORS 错误：无法直接访问 arXiv API。请检查网络连接或使用代理。');
+      }
+      
       return [];
     }
   }
@@ -355,7 +398,6 @@ export class ArxivService {
    * Search papers by custom query
    */
   async searchCustom(query: string, start: number = 0, maxResults: number = 10): Promise<ArxivPaper[]> {
-    // 简化用户查询，避免太复杂的查询导致 503
     const simplifiedQuery = query.trim().split(/\s+/).slice(0, 3).join(' OR ');
     return this.searchPapers(simplifiedQuery, start, maxResults, {
       sortBy: 'relevance',

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Key, Settings2, AlertCircle, Check } from 'lucide-react';
 import type { SummarizerConfig } from '../services/summarizer';
 
@@ -13,19 +13,32 @@ const PROVIDERS = [
   { id: 'openai', name: 'OpenAI', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4', 'gpt-3.5-turbo'] },
   { id: 'anthropic', name: 'Anthropic', models: ['claude-3-sonnet-20240229', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'] },
   { id: 'google', name: 'Google Gemini', models: ['gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-1.5-flash'] },
+  { id: 'moonshot', name: 'Kimi (月之暗面)', models: ['kimi-k2-turbo-preview', 'kimi-k2-turbo', 'kimi-k2.5'] },
   { id: 'local', name: '本地模式 (无AI)', models: ['local'] },
 ];
 
 export function SettingsModal({ isOpen, onClose, onSave, currentConfig }: SettingsModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <SettingsModalContent
+      onClose={onClose}
+      onSave={onSave}
+      currentConfig={currentConfig}
+    />
+  );
+}
+
+// 内部组件 - 每次父组件重新渲染都会重新挂载，自动获取最新配置
+function SettingsModalContent({
+  onClose,
+  onSave,
+  currentConfig,
+}: Omit<SettingsModalProps, 'isOpen'>) {
+  // 使用传入的配置初始化状态
   const [config, setConfig] = useState<SummarizerConfig>(currentConfig);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    setConfig(currentConfig);
-  }, [currentConfig, isOpen]);
-
-  if (!isOpen) return null;
 
   const selectedProvider = PROVIDERS.find(p => p.id === config.provider);
 
@@ -66,12 +79,11 @@ export function SettingsModal({ isOpen, onClose, onSave, currentConfig }: Settin
               {PROVIDERS.map((provider) => (
                 <button
                   key={provider.id}
-                  onClick={() => setConfig({ ...config, provider: provider.id as any })}
-                  className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    config.provider === provider.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  onClick={() => setConfig({ ...config, provider: provider.id as SummarizerConfig['provider'] })}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${config.provider === provider.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   {provider.name}
                 </button>
@@ -154,6 +166,11 @@ export function SettingsModal({ isOpen, onClose, onSave, currentConfig }: Settin
           {config.provider === 'google' && (
             <p className="text-xs text-gray-500">
               获取 API Key: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google AI Studio</a>
+            </p>
+          )}
+          {config.provider === 'moonshot' && (
+            <p className="text-xs text-gray-500">
+              获取 API Key: <a href="https://platform.moonshot.cn/console/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Kimi 开放平台</a>
             </p>
           )}
         </div>

@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ArxivPaper, SummaryResult } from './types';
 import { arxivService } from './services/arxiv';
 import { SummarizerService, type SummarizerConfig } from './services/summarizer';
 import { PaperCard } from './components/PaperCard';
+import { PaperListSkeleton } from './components/PaperCardSkeleton';
 import { SummaryModal } from './components/SummaryModal';
 import { SettingsModal } from './components/SettingsModal';
+import { LibraryModal } from './components/LibraryModal';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { 
   Search, 
   RefreshCw, 
@@ -14,7 +17,10 @@ import {
   Sparkles,
   Github,
   Clock,
-  WifiOff
+  WifiOff,
+  Library,
+  Keyboard,
+  X
 } from 'lucide-react';
 
 const DEFAULT_CONFIG: SummarizerConfig = {
@@ -44,9 +50,56 @@ function App() {
     return saved ? JSON.parse(saved) : DEFAULT_CONFIG;
   });
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Library state
+  const [showLibrary, setShowLibrary] = useState(false);
+  
+  // Keyboard shortcuts help
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  
+  // Refs for navigation
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const paperRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [selectedPaperIndex, setSelectedPaperIndex] = useState(-1);
 
   // Initialize summarizer
   const summarizer = new SummarizerService(config);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSearch: () => searchInputRef.current?.focus(),
+    onRefresh: () => loadPapers(true),
+    onSettings: () => setShowSettings(true),
+    onLibrary: () => setShowLibrary(true),
+    onNextPaper: () => {
+      setSelectedPaperIndex(prev => {
+        const next = Math.min(prev + 1, papers.length - 1);
+        paperRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return next;
+      });
+    },
+    onPrevPaper: () => {
+      setSelectedPaperIndex(prev => {
+        const next = Math.max(prev - 1, 0);
+        paperRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return next;
+      });
+    },
+  }, !showSummary && !showSettings && !showLibrary && !showShortcutsHelp);
+
+  // 单独的 ? 快捷键监听
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '?' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          setShowShortcutsHelp(prev => !prev);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Load papers with better error handling
   const loadPapers = useCallback(async (reset: boolean = false) => {
@@ -90,9 +143,13 @@ function App() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : '加载论文失败';
       
-      // 针对 503 错误的特殊提示
-      if (errorMsg.includes('503') || errorMsg.includes('timeout')) {
+      // 针对各种错误的特殊提示
+      if (errorMsg.includes('503')) {
         setError('arXiv 服务暂时不可用 (503)，请稍后再试。建议减少搜索频率，等待几秒后重试。');
+      } else if (errorMsg.includes('CORS') || errorMsg.includes('Failed to fetch')) {
+        setError('CORS 跨域错误：无法访问 arXiv API。请确保使用正确的开发服务器 (npm run dev) 或检查网络连接。');
+      } else if (errorMsg.includes('NetworkError') || errorMsg.includes('network')) {
+        setError('网络错误：无法连接到 arXiv。请检查网络连接。');
       } else {
         setError(errorMsg);
       }
@@ -175,10 +232,11 @@ function App() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="搜索论文 (例如: transformer, GPT, LLM)..."
+                  placeholder="搜索论文 (/ 快捷键)..."
                   className="w-full pl-10 pr-4 py-2 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm transition-all outline-none"
                 />
               </div>
@@ -187,9 +245,23 @@ function App() {
             {/* Actions */}
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setShowShortcutsHelp(true)}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="快捷键 (? )"
+              >
+                <Keyboard className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowLibrary(true)}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="我的图书馆 (L)"
+              >
+                <Library className="w-5 h-5" />
+              </button>
+              <button
                 onClick={() => setShowSettings(true)}
                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="设置"
+                title="设置 (S)"
               >
                 <Settings className="w-5 h-5" />
               </button>
@@ -281,11 +353,7 @@ function App() {
           </div>
 
           {papers.length === 0 && loading ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
-              <p className="mt-4 text-gray-500">正在从 arXiv 获取论文...</p>
-              <p className="mt-2 text-xs text-gray-400">首次加载可能需要几秒，请耐心等待</p>
-            </div>
+            <PaperListSkeleton count={5} />
           ) : papers.length === 0 && error ? (
             <div className="text-center py-16">
               <WifiOff className="w-16 h-16 text-gray-300 mx-auto" />
@@ -309,13 +377,18 @@ function App() {
             </div>
           ) : (
             <div className="grid gap-4">
-              {papers.map((paper) => (
-                <PaperCard
+              {papers.map((paper, index) => (
+                <div
                   key={paper.id}
-                  paper={paper}
-                  onSummarize={handleSummarize}
-                  isSummarizing={isSummarizing && selectedPaper?.id === paper.id}
-                />
+                  ref={el => { paperRefs.current[index] = el; }}
+                  className={selectedPaperIndex === index ? 'ring-2 ring-blue-500 rounded-xl' : ''}
+                >
+                  <PaperCard
+                    paper={paper}
+                    onSummarize={handleSummarize}
+                    isSummarizing={isSummarizing && selectedPaper?.id === paper.id}
+                  />
+                </div>
               ))}
             </div>
           )}
@@ -385,6 +458,40 @@ function App() {
         onSave={handleSaveConfig}
         currentConfig={config}
       />
+
+      <LibraryModal
+        isOpen={showLibrary}
+        onClose={() => setShowLibrary(false)}
+      />
+
+      {/* Keyboard Shortcuts Help */}
+      {showShortcutsHelp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowShortcutsHelp(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">键盘快捷键</h2>
+              <button onClick={() => setShowShortcutsHelp(false)} className="p-2 text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {[
+                { key: '/', desc: '聚焦搜索框' },
+                { key: 'R', desc: '刷新论文列表' },
+                { key: 'S', desc: '打开设置' },
+                { key: 'L', desc: '打开图书馆' },
+                { key: 'J / K', desc: '下一条 / 上一条论文' },
+                { key: '?', desc: '显示快捷键帮助' },
+              ].map(({ key, desc }) => (
+                <div key={key} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <span className="text-gray-600">{desc}</span>
+                  <kbd className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-mono">{key}</kbd>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
